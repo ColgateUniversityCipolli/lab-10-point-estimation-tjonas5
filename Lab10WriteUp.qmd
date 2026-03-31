@@ -136,12 +136,74 @@ To help us think about the interpretation, something that was challenging before
 ## Part a
 Suppose a player has a 50\% chance of winning a specific leg, that is let $p=0.50$. Let's look at the probability they win ($x=6$) legs in the match. Compute this probability over a sequence from $\theta=0.5$ to $\theta=1.5$ and plot it using a line where the $x$-axis is $\theta$ and the $y$-axis is $P(X=6)$.
 
+**Solution**
+
+```{r}
+library(tidyverse)
+p=.5 
+x = 6
+theta= seq(.5, 1.5, .001)
+data = daltbinom(x = x, size = 11, prob = p, theta = theta)
+ggdat <- tibble(theta = theta) |>
+ mutate(Probability = data)
+```
+
+```{r}
+#| label: fig-line-theta-prob
+#| fig-cap: "P(X=6) for different values of theta."
+#| fig-width: 5
+#| fig-height: 3
+#| scale: "80%"
+#| fig-align: "center"
+#| size: scriptsize
+ggplot(data = ggdat) +
+  geom_line(aes(x = theta, y = Probability))+
+  theme_bw() + 
+    labs(x = "Theta",
+        y="P(X=6)")
+```
+
 ## Part b
 Now, plot Altham's Multiplicative Binomial Distribution under the same parameters with $\theta=0.50$, $\theta=1$, and $\theta=1.5$. Use `ncol=1` in `facet_wrap()` to plot the PMFs in a single column for comparing.
+
+**Solution** 
+```{r}
+x=0:11
+theta_.5_data=daltbinom(x=x, size=11, prob = .5, theta = .5)
+theta_1_data=daltbinom(x=x, size=11, prob=.5, theta = 1)
+theta_1.5_data=daltbinom(x=x, size=11, prob=.5, theta = 1.5)
+ggdat <- tibble(Games_won = x) |>
+ mutate(Theta_.5 = theta_.5_data, Theta_1=theta_1_data, Theta_1.5=theta_1.5_data)
+```
+
+```{r}
+library(patchwork)
+theta.5plot= ggplot(data = ggdat) +
+  geom_line(aes(x = Games_won, y = Theta_.5))+
+  theme_bw() + 
+    labs(x = "Games won",
+        y="P(X=6) when theta = .5")
+theta1plot = ggplot(data = ggdat) +
+  geom_line(aes(x = Games_won, y = Theta_1))+
+  theme_bw() + 
+    labs(x = "Games won",
+        y="P(X=6) when theta = 1")
+theta1.5plot = ggplot(data = ggdat) +
+  geom_line(aes(x = Games_won, y = Theta_1.5))+
+  theme_bw() + 
+    labs(x = "Games won",
+        y="P(X=6) when theta = 1.5")
+
+theta.5plot+theta1plot+theta1.5plot
+```
 
 ## Part c
 What is your best assessment of what $\theta$ is doing in this setting. Consider when a 6-0 blowout is most likely, and when a 5-6 nail-biter is most likely. Note here we should treat the match as a fixed $n=11$ as we did for $n=3$ in Lab 8.\
 **Note:** In lab 8, we saw that small $\theta$ meant wins came in bunches (clumped together), so there were more 2-0 wins in a best of three series.
+
+**Solution**
+
+In this setting, an increasing theta is making it more likely that there is a close outcome. We can see this because when theta = .5, the probability of a player winning 0 or 11 games (hypothetically) is much larger than the probability of a close match, such as one ending with the score of 6-5. Conversely, when theta = 1.5, it is much more likely for the score to be 6-5 than it is 0-11. 
 
 # Question 2
 
