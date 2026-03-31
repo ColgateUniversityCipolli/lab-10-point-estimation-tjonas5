@@ -221,17 +221,53 @@ Altham's Multiplicative Binomial Distribution does not typically simplify to the
 Here is the expression to find $E(X^k)$.
 $$E(x^k) = \sum_{i=-\infty}^{\infty} x^k \frac{1}{c} {n \choose x} p^x (1-p)^{n-x} \theta^{x(n-x)}I(x \in \{0, 1, ..., n\})$$
 
-Here is the code to compute it.
+Here is the code to compute it. I used my daltbinom from lab 8 to save time.
+```{r}
+daltbinom = function(x, p, theta, n){
+  norm.c = 0
+  for (i in 0:n){
+    norm.c = norm.c + choose(n, i)* p^i * (1-p)^(n-i)* theta^(i*(n-i))
+  }
+  1/norm.c * choose(n, x) * p^x*(1-p)^(n-x)*theta^(x*(n-x))
+}
 
+genaltbinom = function(p, theta, size){
+  x=0:size
+  n=11
+  sum=0
+  for (i in x=1:size)
+    sum = sum + daltbinom(x=1, p=p, theta=theta, n=n)
+}
+```
 
 ## Part b
 Describe how you can use your answer to part a to find Method of Moments estimates for the parameters $p$ and $\theta$ for Altham's Multiplicative Binomial Distribution based on data.
 
+**Solution**
+
+When given data, we can calculate the mean of the data and the mean of the data squared, which are the sample moments. Using my function, it is possible to calculate the population moments, which are the expected values of the random variable of interest. Setting the first sample moment equal to the first population moment and the second sample moment equal to the second population moment, we would be able to solve the system of equations and find estimates of p and theta.
+
 ## Part c
 Write a function that computes the log-likelihood for Altham's Multiplicative Binomial Distribution, given data (`x`) and proposed parameter values $p$ (`prob`) and $\theta$ (`theta`).
 
+**Solution**
+Here is the code for that function. Again, I reused my daltbinom function in this loglikelihood function.
+
+```{r}
+loglikelihood = function(x, p, theta){
+n = length(x)
+sum=0
+for (i in 1:n)
+  sum= sum + log(daltbinom(x=i, p=p, theta=theta, n=n))
+}
+
+```
+
 ## Part d
 Describe how you can use your answer to part c to find Maximum Likelihood estimates for the parameters $p$ and $\theta$ for Altham's Multiplicative Binomial Distribution based on data.
+
+**Solution**
+
 
 # Lab 10
 Peter "Snakebite" Wright is a two-time Professional Darts Corporation World Champion (2020, 2022) and a former World No. 1. He is one of the sport's most decorated players, winning nearly 50 PDC titles including the World Matchplay, UK Open, and multiple European Championships. 
@@ -262,6 +298,17 @@ In `pdc2024.csv`, I have provided the data for the 2024 Premier League season. T
   * Make two columns `WinnerLegs` and `LoserLegs` that keep track of the number of legs each player has won
   
   Summarize the data. What do the data tell us about the breakdown of the results?
+
+**Solution**
+
+```{r}
+data = read_csv('/Users/tobijonas/lab-10-point-estimation-tjonas5/pdc2024.csv')
+data2= filter(data, as.numeric(Night) < 17) |> 
+        separate_wider_delim(Score, delim="-", names=c("WinnerLegs", "LoserLegs"), too_few = "debug")
+
+
+
+```
 
 ## Altham's Multiplicative Binomial Distribution
 For each player in the 2024 season, use the number of legs won in each match to compute maximium likelihood estimates for $p$ and $\theta$. \
