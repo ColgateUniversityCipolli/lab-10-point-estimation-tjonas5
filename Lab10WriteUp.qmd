@@ -177,19 +177,26 @@ ggdat <- tibble(Games_won = x) |>
 ```
 
 ```{r}
+#| label: fig-line-all-theta-values-prob
+#| fig-cap: "P(X=6) graphs for theta values .5, 1, and 1.5 "
+#| fig-width: 5
+#| fig-height: 3
+#| scale: "80%"
+#| fig-align: "center"
+#| size: scriptsize
 library(patchwork)
 theta.5plot= ggplot(data = ggdat) +
-  geom_line(aes(x = Games_won, y = Theta_.5))+
+  geom_linerange(aes(x = Games_won, ymin=0, ymax = Theta_.5))+
   theme_bw() + 
     labs(x = "Games won",
         y="P(X=6) when theta = .5")
 theta1plot = ggplot(data = ggdat) +
-  geom_line(aes(x = Games_won, y = Theta_1))+
+  geom_linerange(aes(x = Games_won, ymin=0, ymax = Theta_1))+
   theme_bw() + 
     labs(x = "Games won",
         y="P(X=6) when theta = 1")
 theta1.5plot = ggplot(data = ggdat) +
-  geom_line(aes(x = Games_won, y = Theta_1.5))+
+  geom_linerange(aes(x = Games_won, ymin=0, ymax = Theta_1.5))+
   theme_bw() + 
     labs(x = "Games won",
         y="P(X=6) when theta = 1.5")
@@ -209,6 +216,13 @@ In this setting, an increasing theta is making it more likely that there is a cl
 
 ## Part a
 Altham's Multiplicative Binomial Distribution does not typically simplify to the clean $E(X)=np$ seen in the Binomial distribution, unless $\theta = 1$. Write out the expression that would need to be solved to find $E(X^k)$, and then write a function that computes it given the proposed parameter values $p$ (`prob`) and $\theta$ (`theta`).
+
+**Solution**
+Here is the expression to find $E(X^k)$.
+$$E(x^k) = \sum_{i=-\infty}^{\infty} x^k \frac{1}{c} {n \choose x} p^x (1-p)^{n-x} \theta^{x(n-x)}I(x \in \{0, 1, ..., n\})$$
+
+Here is the code to compute it.
+
 
 ## Part b
 Describe how you can use your answer to part a to find Method of Moments estimates for the parameters $p$ and $\theta$ for Altham's Multiplicative Binomial Distribution based on data.
