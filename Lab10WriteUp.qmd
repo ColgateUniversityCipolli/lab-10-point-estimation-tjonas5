@@ -232,10 +232,10 @@ daltbinom = function(x, p, theta, n){
 }
 
 genaltbinom = function(p, theta, size){
-  x=0:size
+  x=1:size
   n=11
   sum=0
-  for (i in x=1:size)
+  for (i in x)
     sum = sum + daltbinom(x=1, p=p, theta=theta, n=n)
 }
 ```
@@ -258,9 +258,9 @@ loglikelihood = function(x, p, theta){
 n = length(x)
 sum=0
 for (i in 1:n)
-  sum= sum + log(daltbinom(x=i, p=p, theta=theta, n=n))
+  sum= sum + log(daltbinom(x=x[i], p=p, theta=theta, n=n))
+  return(sum)
 }
-
 ```
 
 ## Part d
@@ -268,6 +268,7 @@ Describe how you can use your answer to part c to find Maximum Likelihood estima
 
 **Solution**
 
+As discussed in class, we can use the optim() function in r to solve for the minimum values. Since optim finds the minimum, we use the negative function so it finds the maximum. This will then give us the optimal values of p and theta to maximize the function. This maximization yields the most probable model given the data.
 
 # Lab 10
 Peter "Snakebite" Wright is a two-time Professional Darts Corporation World Champion (2020, 2022) and a former World No. 1. He is one of the sport's most decorated players, winning nearly 50 PDC titles including the World Matchplay, UK Open, and multiple European Championships. 
@@ -302,11 +303,57 @@ In `pdc2024.csv`, I have provided the data for the 2024 Premier League season. T
 **Solution**
 
 ```{r}
-data = read_csv('/Users/tobijonas/lab-10-point-estimation-tjonas5/pdc2024.csv')
-data2= filter(data, as.numeric(Night) < 17) |> 
+raw.data = read_csv('/Users/tobijonas/lab-10-point-estimation-tjonas5/pdc2024.csv')
+data2= filter(raw.data, as.numeric(Night) < 17) |> 
         separate_wider_delim(Score, delim="-", names=c("WinnerLegs", "LoserLegs"), too_few = "debug")
+data2 = data2 |> mutate(LoserLegs = as.numeric(LoserLegs),
+              WinnerLegs = as.numeric(WinnerLegs))
+
+# mean(data2$LoserLegs, na.rm=T)
+
+data2 |>
+  summarise(
+    total_matches   = n(),
+    avg_loser_legs  = mean(LoserLegs, na.rm = T),
+    pct_close       = mean(6 - LoserLegs == 1, na.rm = T)  # close here means decided by 1 leg
+  )
+wins <- data2 |> count(Winner, name = "Wins") |> rename(Player = Winner)
+losses <- data2 |> count(Loser, name = "Losses") |> rename(Player = Loser)
 
 
+player_summary <- wins |>
+  full_join(losses, by = "Player") |>
+  mutate(Matches = Wins + Losses,
+         WinPct  = round(Wins / Matches, 3)) |>
+  arrange(desc(Wins))
+
+
+
+data2 |>
+  group_by(Round) |>
+  summarise(
+    match_count       = n(),
+    # no need to calculate average winner legs since it is always six
+    avg_loser_legs  = mean(LoserLegs, na.rm = T),
+    pct_close       = mean(6 - LoserLegs == 1, na.rm = T)
+  )
+```
+
+
+```{r}
+#| label: total-wins-by-player
+#| fig-cap: "Total wins by player"
+#| fig-width: 5
+#| fig-height: 3
+#| scale: "80%"
+#| fig-align: "center"
+#| size: scriptsize
+
+player_summary |>
+  ggplot(aes(x = reorder(Player, Wins), y = Wins)) +
+  geom_bar(stat = "identity", fill = "darkorchid2", colour = "black") +
+  coord_flip() +
+  labs(x = "Player", y = "Wins")
 
 ```
 
@@ -319,6 +366,31 @@ For each player in the 2024 season, use the number of legs won in each match to 
 **Note:** In Lecture on Monday, we used transformations to restrict how `optim()` searches the parameter space. For example, here, you might consider
 `p <- 1/(1+exp(-par[1]))` and `theta <- exp(par[2])`.
 * Make comments about the MLEs in the context of the standings.
+
+**Solution**
+
+```{r}
+
+# MLE_calc = function(player, p, theta){
+#   legs_won = c()
+#   for (i in 1:nrow(data2)){
+#     if (player == data2$Winner[i]){
+#       legs_won[i] = data2$WinnerLegs[i]
+#     } else if (player == data2$Loser[i]){
+#       legs_won[i] = data2$LoserLegs[i]
+#     }
+#   }
+  
+#   return(na.omit(legs_won))
+# }
+MLE_calc = function(player, p, theta){
+  legs_won = data2 |>
+    filter(Winner == player | Loser == player) |>
+    mutate(legs = if_else(Winner == player, WinnerLegs, LoserLegs)) |>
+    pull(legs)
+  return(legs_won)
+}
+```
 
 ## Altham's Multiplicative Beta Binomial Distribution
 
