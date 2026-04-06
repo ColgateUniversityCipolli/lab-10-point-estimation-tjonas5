@@ -308,17 +308,17 @@ data2= filter(raw.data, as.numeric(Night) < 17) |>
         separate_wider_delim(Score, delim="-", names=c("WinnerLegs", "LoserLegs"), too_few = "debug")
 data2 = data2 |> mutate(LoserLegs = as.numeric(LoserLegs),
               WinnerLegs = as.numeric(WinnerLegs))
+              
+data3=na.omit(data2)
 
-# mean(data2$LoserLegs, na.rm=T)
-
-data2 |>
+data3 |>
   summarise(
     total_matches   = n(),
     avg_loser_legs  = mean(LoserLegs, na.rm = T),
     pct_close       = mean(6 - LoserLegs == 1, na.rm = T)  # close here means decided by 1 leg
   )
-wins <- data2 |> count(Winner, name = "Wins") |> rename(Player = Winner)
-losses <- data2 |> count(Loser, name = "Losses") |> rename(Player = Loser)
+wins <- data3 |> count(Winner, name = "Wins") |> rename(Player = Winner)
+losses <- data3 |> count(Loser, name = "Losses") |> rename(Player = Loser)
 
 
 player_summary <- wins |>
@@ -327,9 +327,7 @@ player_summary <- wins |>
          WinPct  = round(Wins / Matches, 3)) |>
   arrange(desc(Wins))
 
-
-
-data2 |>
+data3 |>
   group_by(Round) |>
   summarise(
     match_count       = n(),
@@ -356,6 +354,25 @@ player_summary |>
   labs(x = "Player", y = "Wins")
 
 ```
+
+```{r}
+#| label: scoreline-distribution
+#| fig-cap: "Distribution of Scorelines"
+#| fig-width: 5
+#| fig-height: 3
+#| scale: "80%"
+#| fig-align: "center"
+#| size: scriptsize
+data3 |>
+  mutate(Score = paste0(WinnerLegs, "-", LoserLegs)) |>
+  count(Score) |>
+  ggplot(aes(x = reorder(Score, n), y = n)) +
+  geom_bar(stat = "identity", fill = "steelblue", colour = "black") +
+  coord_flip() +
+  labs(x = "Scoreline", y = "Frequency")
+```
+
+This data tells us that most matches are decided by more than one leg, and as such are not "close". It also tells us that the round of the tournament has an effect on what percent of matches are close. Interestingly, the final was the least close of the three rounds, while the quarterfinal was the second closest round, and the semifinal had the largest amount of close matches. Before analyzing the data, I had assumed that as the tournament advanced, the matches would on average be closer, so it was suprising to be proven wrong. Another notable part of the analysis was that the most common scoreline was 6-5, the "close" outcome. This makes intuitive sense, since the players are all professionals and therefore are fairly close in skill, it is less likely that there would be a blowout victory. However, 6-3 is more common than 6-4, which is an outlier in the general trend of it being more likely for the loser to win a higher amount of legs than a lower amount.
 
 ## Altham's Multiplicative Binomial Distribution
 For each player in the 2024 season, use the number of legs won in each match to compute maximium likelihood estimates for $p$ and $\theta$. \
