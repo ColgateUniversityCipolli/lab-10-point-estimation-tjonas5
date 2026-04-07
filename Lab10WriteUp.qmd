@@ -144,7 +144,7 @@ p=.5
 x = 6
 theta= seq(.5, 1.5, .001)
 data = daltbinom(x = x, size = 11, prob = p, theta = theta)
-ggdat <- tibble(theta = theta) |>
+ggdat= tibble(theta = theta) |>
  mutate(Probability = data)
 ```
 
@@ -172,7 +172,7 @@ x=0:11
 theta_.5_data=daltbinom(x=x, size=11, prob = .5, theta = .5)
 theta_1_data=daltbinom(x=x, size=11, prob=.5, theta = 1)
 theta_1.5_data=daltbinom(x=x, size=11, prob=.5, theta = 1.5)
-ggdat <- tibble(Games_won = x) |>
+ggdat= tibble(Games_won = x) |>
  mutate(Theta_.5 = theta_.5_data, Theta_1=theta_1_data, Theta_1.5=theta_1.5_data)
 ```
 
@@ -221,16 +221,8 @@ Altham's Multiplicative Binomial Distribution does not typically simplify to the
 Here is the expression to find $E(X^k)$.
 $$E(x^k) = \sum_{i=-\infty}^{\infty} x^k \frac{1}{c} {n \choose x} p^x (1-p)^{n-x} \theta^{x(n-x)}I(x \in \{0, 1, ..., n\})$$
 
-Here is the code to compute it. I used my daltbinom from lab 8 to save time.
+Here is the code to compute it. This function uses the given daltbinom from previously.
 ```{r}
-daltbinom = function(x, p, theta, n){
-  norm.c = 0
-  for (i in 0:n){
-    norm.c = norm.c + choose(n, i)* p^i * (1-p)^(n-i)* theta^(i*(n-i))
-  }
-  1/norm.c * choose(n, x) * p^x*(1-p)^(n-x)*theta^(x*(n-x))
-}
-
 genaltbinom = function(p, theta, size){
   x=1:size
   n=11
@@ -251,13 +243,13 @@ When given data, we can calculate the mean of the data and the mean of the data 
 Write a function that computes the log-likelihood for Altham's Multiplicative Binomial Distribution, given data (`x`) and proposed parameter values $p$ (`prob`) and $\theta$ (`theta`).
 
 **Solution**
-Here is the code for that function. Again, I reused my daltbinom function in this loglikelihood function.
+Here is the code for that function. 
 
 ```{r}
 loglikelihood = function(x, p, theta, n = 6) {
   sum = 0
   for (i in 1:length(x))
-    sum = sum + log(daltbinom(x = x[i], p = p, theta = theta, n =n ))
+    sum = sum + log(daltbinom(x = x[i], p = p, theta = theta, size=11 ))
   return(sum)
 }
 ```
@@ -311,12 +303,10 @@ data2 = data2 |> mutate(LoserLegs = as.numeric(LoserLegs),
 data3=na.omit(data2)
 data3 |>
   summarise(
-    total_matches   = n(),
-    avg_loser_legs  = mean(LoserLegs, na.rm = T),
-    pct_close       = mean(6 - LoserLegs == 1, na.rm = T)  # close here means decided by 1 leg
+    total_matches = n(),
+    avg_loser_legs = mean(LoserLegs, na.rm = T),
+    pct_close = mean(6 - LoserLegs == 1, na.rm = T)  # close here means decided by 1 leg
   )
-# wins <- data3 |> count(Winner, name = "Wins") |> rename(Player = Winner)
-# losses <- data3 |> count(Loser, name = "Losses") |> rename(Player = Loser)
 data3 |>
   group_by(Round) |>
   summarise(
@@ -371,7 +361,8 @@ MLE_calc = function(player, p, theta){
   neg_loglikelihood = function(par) {
     p = 1/(1 + exp(-par[1])) #suggested on lab sheet
     theta = exp(par[2])  #suggested on lab sheet 
-    -loglikelihood(x = legs_won, p = p, theta = theta, n=6) # as mentioned earlier, use negative because optim minimizes the function
+    -loglikelihood(x = legs_won, p = p, theta = theta, n=6) # as mentioned earlier,
+    # use negative because optim minimizes the function
   }
   mle = optim(par = c(0, 0), fn = neg_loglikelihood)
   p_mle = 1 / (1 + exp(-mle$par[1])) # translate to p 
@@ -427,54 +418,82 @@ loglikelihood_bb = function(x, size, theta, alpha, beta) {
 }
 ```
 
-
 ```{r}
+# The MLE function is majority the same, with changes made to 
+# get the new variables alpha and beta
 MLE_calc_bb = function(player) {
-  legs_won= data3 |>
+  legs_won =data3 |>
     filter(Winner == player | Loser == player) |>
     mutate(legs = if_else(Winner == player, WinnerLegs, LoserLegs)) |>
     pull("legs")
-#like before, taking negative of loglikelihood because optim finds the minimum by default  
-neg_loglikelihood = function(par) {
+  neg_loglikelihood = function(par) {
     theta = exp(par[1])
     alpha = exp(par[2])
-    beta  = exp(par[3])
-    result = -loglikelihood_bb(x = legs_won, theta = theta,alpha = alpha, beta = beta)
-    return(result)
+    beta =exp(par[3])
+    result = -loglikelihood_bb(x = legs_won, theta = theta, size = 6, alpha = alpha, beta = beta)
   }
-  #using optim function with original guess of (1,1,1). Initally, I wanted to use (0,0,0), but got an error so I changed it.
-  mle = optim(par = c(1, 1, 1), fn = neg_loglikelihood)
-  theta = exp(mle$par[1])
-  alpha = exp(mle$par[2])
-  beta  = exp(mle$par[3])
-  # adding mean and variance
-  mean = alpha/(alpha+beta)
-  var  = (alpha*beta)/((alpha+beta)^2 *(alpha+beta+1))
-  
+  # I chose (0.5,0.5,0.5) as my intial guess because it is close
+  # to the origin, but since alpha and beta cannot be negative,
+  # I wanted to be closer to the potential values.
+  mle=optim(par = c(0.5, 0.5, 0.5), fn = neg_loglikelihood)
+  theta_mle= exp(mle$par[1])
+  alpha_mle= exp(mle$par[2])
+  beta_mle= exp(mle$par[3])
+  mean =alpha_mle/(alpha_mle + beta_mle)
+  var =(alpha_mle*beta_mle)/((alpha_mle+beta_mle)^2 *(alpha_mle+beta_mle+1))
   return(c(player = player,
-           theta = round(theta, 3),
-           alpha = round(alpha, 3),
-           beta = round(beta,  3),
-           mean = round(mean, 3),
-           variance = round(var,  3)))
+  #I was having issues displaying and fitting the data. 
+  #Converting to numeric and rounding the numbers fixed these problems.
+           theta = as.numeric(round(theta_mle, 4)),
+           alpha = as.numeric(round(alpha_mle, 4)),
+           beta = as.numeric(round(beta_mle,  4)),
+           mean = as.numeric(round(mean, 4)),
+           var = as.numeric(round(var, 4))))
 }
-
-players = unique(c(data3$Winner, data3$Loser))
-results = map(players, MLE_calc_bb) |>
-  bind_rows() |>
-  mutate(theta = as.numeric(theta), alpha = as.numeric(alpha), beta = as.numeric(beta), mean = as.numeric(mean), variance = as.numeric(variance)) |>
+players =unique(c(data3$Winner, data3$Loser))
+results_bb =map(players, MLE_calc_bb) |>
+  bind_rows() |> #this combines all the player data into one data frame
   arrange(desc(mean))
-
 ```
 
 
-After sorting the data by different variables, the variable that most closely corresponded with the actual standings was the mean, which is why I am using it in the final submission. In this context, the mean corresponds to the probability of the player winning a leg. 
+After sorting the data by different variables, the variable that most closely corresponded with the actual standings was the mean, which is why I am using it in the final submission. In this context, the mean corresponds to the probability of the player winning a leg. Most of the alpha and beta values have similar magnitudes to eachother for different players, however one outlier is Peter Wright. Wright has a beta 10 times larger than anyone else, and his alpha is nearly twice the next largest value. Wright is a consistent outlier in this data, since his mean is the lowest by .2 - a huge difference in leg win probability. His variance is also small, suggesting that the model is confident in it's assessment of Wright's skills. This accuratly reflects his poor performance in the tournament. 
 ```{r}
 #| label: tbl-beta-binom
 #| tbl-cap: "MLE for each player in the Altham's Beta Binomial Distribution"
 #| tbl-align: "center"
 #| size: scriptsize
-knitr::kable(results, col.names = c("Player", "theta", "alpha", "beta", "mean", "variance"))
+knitr::kable(results_bb, col.names = c("Player", "theta", "alpha", "beta", "mean", "variance"))
+```
+
+
+```{r}
+plot_beta <- function(player_name) {
+  player_dat <- filter(results_bb, player == player_name)
+  beta_dat <- tibble(
+    x = seq(0, 1, length.out = 1000),
+    density = dbeta(seq(0, 1, length.out = 1000), shape1 = as.numeric(player_dat$alpha), shape2 = as.numeric(player_dat$beta))
+  )
+  # plot
+  ggplot(beta_dat, aes(x = x, y = density)) +
+    geom_line(linewidth = 0.8, colour = "steelblue") +
+    labs(x = "p (leg win probability)",
+         y  = "Density",
+         title = paste("Beta Distribution —", player_name)) +
+    theme_bw()
+}
+
+# example usage
+littler = plot_beta("Luke Littler")
+humphries = plot_beta("Luke Humphries")
+gerwen = plot_beta("Michael van Gerwen")
+smith = plot_beta("Michael Smith")
+aspinall = plot_beta("Nathan Aspinall")
+cross = plot_beta("Rob Cross")
+price = plot_beta("Gerwyn Price")
+wright = plot_beta("Peter Wright")
+
+# use the thing I did in the other lab to make them next to each other 
 ```
 
 
