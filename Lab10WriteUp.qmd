@@ -254,12 +254,11 @@ Write a function that computes the log-likelihood for Altham's Multiplicative Bi
 Here is the code for that function. Again, I reused my daltbinom function in this loglikelihood function.
 
 ```{r}
-loglikelihood = function(x, p, theta){
-n = length(x)
-sum=0
-for (i in 1:n)
-  sum= sum + log(daltbinom(x=x[i], p=p, theta=theta, n=n))
-  return(sum)
+loglikelihood <- function(x, p, theta, n = 6) {
+  total <- 0
+  for (i in 1:length(x))
+    total <- total + log(daltbinom(x = x[i], p = p, theta = theta, n = n))
+  return(total)
 }
 ```
 
@@ -320,13 +319,6 @@ data3 |>
 wins <- data3 |> count(Winner, name = "Wins") |> rename(Player = Winner)
 losses <- data3 |> count(Loser, name = "Losses") |> rename(Player = Loser)
 
-
-player_summary <- wins |>
-  full_join(losses, by = "Player") |>
-  mutate(Matches = Wins + Losses,
-         WinPct  = round(Wins / Matches, 3)) |>
-  arrange(desc(Wins))
-
 data3 |>
   group_by(Round) |>
   summarise(
@@ -338,22 +330,7 @@ data3 |>
 ```
 
 
-```{r}
-#| label: total-wins-by-player
-#| fig-cap: "Total wins by player"
-#| fig-width: 5
-#| fig-height: 3
-#| scale: "80%"
-#| fig-align: "center"
-#| size: scriptsize
 
-player_summary |>
-  ggplot(aes(x = reorder(Player, Wins), y = Wins)) +
-  geom_bar(stat = "identity", fill = "darkorchid2", colour = "black") +
-  coord_flip() +
-  labs(x = "Player", y = "Wins")
-
-```
 
 ```{r}
 #| label: scoreline-distribution
@@ -388,26 +365,39 @@ For each player in the 2024 season, use the number of legs won in each match to 
 
 ```{r}
 
-# MLE_calc = function(player, p, theta){
-#   legs_won = c()
-#   for (i in 1:nrow(data2)){
-#     if (player == data2$Winner[i]){
-#       legs_won[i] = data2$WinnerLegs[i]
-#     } else if (player == data2$Loser[i]){
-#       legs_won[i] = data2$LoserLegs[i]
-#     }
-#   }
-  
-#   return(na.omit(legs_won))
-# }
 MLE_calc = function(player, p, theta){
-  legs_won = data2 |>
+  legs_won = data3 |>
     filter(Winner == player | Loser == player) |>
     mutate(legs = if_else(Winner == player, WinnerLegs, LoserLegs)) |>
     pull(legs)
-  return(legs_won)
+  neg_loglikelihood = function(par) {
+    p = 1/(1 + exp(-par[1])) #suggested on lab sheet
+    theta = exp(par[2])  #suggested on lab sheet 
+    -loglikelihood(x = legs_won, p = p, theta = theta, n=6) # as mentioned earlier, use negative because optim minimizes the function
+  }
+  mle = optim(par = c(0, 0), fn = neg_loglikelihood)
+  p_mle = 1 / (1 + exp(-mle$par[1])) # translate to p 
+  theta_mle = exp(mle$par[2]) #translate to theta
+  
+  return(c(player = player, p = round(p_mle, 4), theta = round(theta_mle, 4)))
 }
+players <- unique(c(data3$Winner, data3$Loser))
+results = map(players, MLE_calc) |>
+  bind_rows() |>
+  mutate(p = as.numeric(p), theta = as.numeric(theta)) |>
+  arrange(desc(p))
 ```
+```{r}
+#| label: tbl-binom-results
+#| tbl-cap: "MLEs for each player"
+#| tbl-align: "center"
+#| size: scriptsize
+knitr::kable(results,
+             col.names = c("Player", "p", "Theta "),
+             digits = 4)
+```
+
+The actual standings are very similar to the predicted standings by the MLE. Luke Littler has the highest p value, and is first in the actual standings. The bottom three in p value are also the bottom three in the actual standings. As well as this, Michael Smith is fourth in both standings. These similarities between the actual rankings and the model suggest that Altham's Multiplicative Binomial fits the data well. 
 
 ## Altham's Multiplicative Beta Binomial Distribution
 
@@ -426,6 +416,16 @@ For each player in the 2024 season, use the number of legs won in each match to 
 \end{align*}
 * Make comments about the MLEs in the context of the standings.\
 **Note**: The players alternate who throws first in a leg has the mathematical "head start" to reach a finish before their opponent can take another turn. Players alternate who throws first with each leg.
+
+**Solution**
+
+```{r}
+
+
+
+
+
+```
 
 ## Executive Summary
 Summarize the work you've done here to provide a brief (200-300 word) data-driven summary of the 2024 Premier League season using your work in Lab 10. Your summary should be professional, clear, and all claims should be corroborated with statistical support.
