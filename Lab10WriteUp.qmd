@@ -254,11 +254,11 @@ Write a function that computes the log-likelihood for Altham's Multiplicative Bi
 Here is the code for that function. Again, I reused my daltbinom function in this loglikelihood function.
 
 ```{r}
-loglikelihood <- function(x, p, theta, n = 6) {
-  total <- 0
+loglikelihood = function(x, p, theta, n = 6) {
+  sum = 0
   for (i in 1:length(x))
-    total <- total + log(daltbinom(x = x[i], p = p, theta = theta, n = n))
-  return(total)
+    sum = sum + log(daltbinom(x = x[i], p = p, theta = theta, n =n ))
+  return(sum)
 }
 ```
 
@@ -309,23 +309,21 @@ data2 = data2 |> mutate(LoserLegs = as.numeric(LoserLegs),
               WinnerLegs = as.numeric(WinnerLegs))
               
 data3=na.omit(data2)
-
 data3 |>
   summarise(
     total_matches   = n(),
     avg_loser_legs  = mean(LoserLegs, na.rm = T),
     pct_close       = mean(6 - LoserLegs == 1, na.rm = T)  # close here means decided by 1 leg
   )
-wins <- data3 |> count(Winner, name = "Wins") |> rename(Player = Winner)
-losses <- data3 |> count(Loser, name = "Losses") |> rename(Player = Loser)
-
+# wins <- data3 |> count(Winner, name = "Wins") |> rename(Player = Winner)
+# losses <- data3 |> count(Loser, name = "Losses") |> rename(Player = Loser)
 data3 |>
   group_by(Round) |>
   summarise(
-    match_count       = n(),
+    match_count  = n(),
     # no need to calculate average winner legs since it is always six
     avg_loser_legs  = mean(LoserLegs, na.rm = T),
-    pct_close       = mean(6 - LoserLegs == 1, na.rm = T)
+    pct_close   = mean(6 - LoserLegs == 1, na.rm = T)
   )
 ```
 
@@ -378,14 +376,13 @@ MLE_calc = function(player, p, theta){
   mle = optim(par = c(0, 0), fn = neg_loglikelihood)
   p_mle = 1 / (1 + exp(-mle$par[1])) # translate to p 
   theta_mle = exp(mle$par[2]) #translate to theta
-  
   return(c(player = player, p = round(p_mle, 4), theta = round(theta_mle, 4)))
 }
-players <- unique(c(data3$Winner, data3$Loser))
+players =unique(c(data3$Winner, data3$Loser)) #creates a list of players
 results = map(players, MLE_calc) |>
   bind_rows() |>
   mutate(p = as.numeric(p), theta = as.numeric(theta)) |>
-  arrange(desc(p))
+  arrange(desc(p)) #order players by descending p 
 ```
 ```{r}
 #| label: tbl-binom-results
@@ -419,13 +416,67 @@ For each player in the 2024 season, use the number of legs won in each match to 
 
 **Solution**
 
+
+First, I start by using the daltbbinom function given above. Then, I use the same loglikelihood function as before, but replace the daltbinom() call with a call to daltbbinom(), since this is now for Altham's Beta Binomial. 
 ```{r}
+loglikelihood_bb = function(x, size, theta, alpha, beta) {
+  sum=0
+  for (i in 1:length(x))
+    sum =sum + log(daltbbinom(x = x[i], theta = theta, size = 6, alpha = alpha, beta = beta))
+  sum = as.numeric(sum)
+}
+```
 
 
+```{r}
+MLE_calc_bb = function(player) {
+  legs_won= data3 |>
+    filter(Winner == player | Loser == player) |>
+    mutate(legs = if_else(Winner == player, WinnerLegs, LoserLegs)) |>
+    pull("legs")
+#like before, taking negative of loglikelihood because optim finds the minimum by default  
+neg_loglikelihood = function(par) {
+    theta = exp(par[1])
+    alpha = exp(par[2])
+    beta  = exp(par[3])
+    result = -loglikelihood_bb(x = legs_won, theta = theta,alpha = alpha, beta = beta)
+    return(result)
+  }
+  #using optim function with original guess of (1,1,1). Initally, I wanted to use (0,0,0), but got an error so I changed it.
+  mle = optim(par = c(1, 1, 1), fn = neg_loglikelihood)
+  theta = exp(mle$par[1])
+  alpha = exp(mle$par[2])
+  beta  = exp(mle$par[3])
+  # adding mean and variance
+  mean = alpha/(alpha+beta)
+  var  = (alpha*beta)/((alpha+beta)^2 *(alpha+beta+1))
+  
+  return(c(player = player,
+           theta = round(theta, 3),
+           alpha = round(alpha, 3),
+           beta = round(beta,  3),
+           mean = round(mean, 3),
+           variance = round(var,  3)))
+}
 
-
+players = unique(c(data3$Winner, data3$Loser))
+results = map(players, MLE_calc_bb) |>
+  bind_rows() |>
+  mutate(theta = as.numeric(theta), alpha = as.numeric(alpha), beta = as.numeric(beta), mean = as.numeric(mean), variance = as.numeric(variance)) |>
+  arrange(desc(mean))
 
 ```
+
+
+After sorting the data by different variables, the variable that most closely corresponded with the actual standings was the mean, which is why I am using it in the final submission. In this context, the mean corresponds to the probability of the player winning a leg. 
+```{r}
+#| label: tbl-beta-binom
+#| tbl-cap: "MLE for each player in the Altham's Beta Binomial Distribution"
+#| tbl-align: "center"
+#| size: scriptsize
+knitr::kable(results, col.names = c("Player", "theta", "alpha", "beta", "mean", "variance"))
+```
+
 
 ## Executive Summary
 Summarize the work you've done here to provide a brief (200-300 word) data-driven summary of the 2024 Premier League season using your work in Lab 10. Your summary should be professional, clear, and all claims should be corroborated with statistical support.
