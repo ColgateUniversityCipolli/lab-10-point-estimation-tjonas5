@@ -523,5 +523,3 @@ In the Binomial distribution, however, only Peter Wright had a theta below one. 
 Looking at the variances, Luke Littler and Peter Wright had the two lowest values. They were also the first and last place finishers, respectively. This means that their leg win probabilities are the most accurately predicted ones by the model, which makes sense, because they were the best/worst players. Wright's low variance, theta below one and low single leg win probability can all be attributed to his very poor performance relative to the rest of the players - he lost 43 more legs than he won.
 
 Looking at overall league match result distributions, the majority of matches are won either 6-5 or 6-4, which suggests that the skill of the players is comparable. 
-
-In conclusion, the k
